@@ -1,52 +1,58 @@
-# Research Software Engineer Take Home Assessment
+# Safe Analytics Query Service
 
-## Safe Analytics Query Service
+## Overview
 
-You are building a lightweight analytics service that allows users to query aggregate information from datasets in a safe and reproducible way.
+The Safe Analytics Query Service provides aggregate analytics over an employee dataset while protecting privacy through small-number suppression.
 
-The service should:
+Features:
 
-* Load structured data from CSV
-* Expose a simple API
-* Return aggregate statistics
-* Apply configurable safety rules
-* Generate audit logs
-
----
-
-# Objective
-
-The goal of this exercise is to assess practical software engineering, API design, testing, validation logic, and problem solving skills.
-
-We are more interested in your engineering decisions, code quality, reasoning, and approach than production ready completeness. We don't expect a production grade implementation.  A clean and well reasoned solution is preferred over excessive features.
+- Aggregate records by a specified field
+- Apply optional filters
+- Suppress counts below a configured threshold
+- Generate audit logs for traceability
+- Expose a REST API using FastAPI
 
 ---
 
-# Requirements
+## Architecture
 
-## 1. Load a Dataset
+### API Layer (`api.py`)
 
-Your application should load the CSV dataset provided in:
+Responsible for:
 
-```text
-data/employees.csv
-```
+- Request validation using Pydantic
+- Exposing the `/query` endpoint
+- Loading the dataset
+- Returning API responses
 
-You may use any language or framework.
+### Query Engine (`query_engine.py`)
+
+Responsible for:
+
+- Validation logic
+- Filtering
+- Aggregation
+- Suppression logic
+- Audit logging
+
+### Audit Logger (`logger.py`)
+
+Responsible for:
+
+- Recording query activity
+- Tracking suppression events
+- Writing audit records
 
 ---
 
-## 2. Expose an API
-
-Create an API endpoint that allows querying aggregate statistics.
-
-Example:
+## API Usage
 
 ```http
 POST /query
 ```
+Aggregate records by a specified field.
 
-Example request:
+### Request
 
 ```json
 {
@@ -54,29 +60,7 @@ Example request:
 }
 ```
 
----
-
-## 3. Apply Safety Rules
-
-Results with counts below the suppression threshold should be suppressed.
-
-For this exercise, assume a default suppression threshold of `3`.
-
-Example:
-
-```json
-{
-  "Executive": "suppressed"
-}
-```
-
----
-
-## 4. Support Filtering
-
-Support simple filtering in queries.
-
-Example:
+### Request With Filter
 
 ```json
 {
@@ -87,21 +71,36 @@ Example:
 }
 ```
 
+### Successful Response
+
+```json
+{
+  "Engineering": 9,
+  "Finance": 3,
+  "Research": 4,
+  "Executive": "suppressed"
+}
+```
+
+### Validation Error
+
+```json
+{
+  "error": "Invalid group_by field: unknown_column"
+}
+```
+
 ---
 
-## 5. Generate Audit Logs
+## Audit Logging
 
-Each query should generate an audit log entry containing:
-
-* timestamp
-* query details
-* whether suppression was triggered
+Each query execution generates an audit record.
 
 Example:
 
 ```json
 {
-  "timestamp": "2026-05-26T10:00:00Z",
+  "timestamp": "2026-05-29T11:27:22Z",
   "group_by": "department",
   "filters": {
     "location": "London"
@@ -112,157 +111,140 @@ Example:
 
 ---
 
-## 6. Containerise the Application
+## Running Locally
 
-Please provide:
+### Create Virtual Environment
 
-* Dockerfile
-* simple run instructions
+```bash
+python -m venv venv
+source venv/bin/activate
+```
 
----
+### Install Dependencies
 
-## 7. Include Basic Tests
+```bash
+pip install -r requirements.txt
+```
 
-Please include a few tests where appropriate.
+### Start Application
 
-Examples:
+```bash
+uvicorn app.api:app --reload
+```
 
-* validation logic
-* suppression behaviour
-* API responses
-* filtering behaviour
-
----
-
-# Dataset
-
-Dataset file:
+Swagger UI:
 
 ```text
-data/employees.csv
+http://127.0.0.1:8000/docs
 ```
 
-# Example Scenarios
+---
 
-## Example 1: Standard Aggregation
+## Running Tests
 
-Request:
+Execute all tests:
 
 ```bash
-curl -X POST http://localhost:8080/query \
-  -H "Content-Type: application/json" \
-  -d '{
-    "group_by": "department"
-  }'
+pytest
 ```
 
-Expected response:
-
-```json
-{
-  "Engineering": 9,
-  "Finance": 3,
-  "HR": 3,
-  "Marketing": 3,
-  "Support": 3,
-  "Research": 4,
-  "Legal": 3,
-  "Executive": "suppressed"
-}
-```
-
-Explanation:
-
-Records are aggregated by department and returned as counts. Departments with counts greater than or equal to the suppression threshold are returned normally.
-
-Departments below the suppression threshold are suppressed to reduce the risk of exposing sensitive or identifiable information.
-
----
-
-## Example 2: Filtering and Suppression Scenario
-
-Request:
+Run with coverage:
 
 ```bash
-curl -X POST http://localhost:8080/query \
-  -H "Content-Type: application/json" \
-  -d '{
-    "group_by": "department",
-    "filter": {
-      "location": "Manchester"
-    }
-  }'
+pytest --cov=app
 ```
 
-Expected response:
+Current results:
 
-```json
-{
-  "Engineering": "suppressed",
-  "Finance": "suppressed",
-  "Marketing": "suppressed",
-  "HR": "suppressed",
-  "Research": "suppressed",
-  "Support": "suppressed",
-  "Legal": "suppressed",
-  "Executive": "suppressed"
-}
+```text
+9 passed
+96% coverage
 ```
-
-Explanation:
-
-The dataset is first filtered to include only employees located in Manchester. The remaining records are then grouped by department.
-
-Because each department contains fewer than the suppression threshold number of records after filtering, all results are suppressed.
 
 ---
 
-## Example 3: Invalid Column
+## Running with Docker
 
-Request:
+### Build Image
 
 ```bash
-curl -X POST http://localhost:8080/query \
-  -H "Content-Type: application/json" \
-  -d '{
-    "group_by": "unknown_column"
-  }'
+docker build -t safe-analytics-query-service .
 ```
 
-Expected response:
+### Run Container
 
-```json
-{
-  "error": "Invalid group_by field: unknown_column"
-}
+```bash
+docker run -p 8000:8000 safe-analytics-query-service
 ```
 
-Explanation:
+Swagger UI:
 
-The request attempts to group by a column that does not exist in the dataset.
-
-The service should validate incoming requests and return a clear validation error instead of failing unexpectedly.
+```text
+http://localhost:8000/docs
+```
 
 ---
 
-# Submission Instructions
+## Project Structure
 
-Please fork this repository and implement your solution in your own fork.
+```text
+safe-analytics-query-service/
+│
+├── app/
+│   ├── api.py
+│   ├── query_engine.py
+│   ├── logger.py
+│   └── __init__.py
+│
+├── data/
+│   └── employees.csv
+│
+├── tests/
+│   ├── test_api.py
+│   └── test_query_engine.py
+│
+├── Dockerfile
+├── .dockerignore
+├── .gitignore
+├── requirements.txt
+├── README.md
+└── audit.log*
+```
 
-Once completed, please share the GitHub repository link as your submission.
-
-Please include:
-
-* source code
-* README updates if required
-* Dockerfile
-* tests
-* run instructions
+\* Generated automatically during execution and excluded from source control.
 
 ---
 
-# Notes
+## Assumptions
 
-You are free to make reasonable assumptions where requirements are ambiguous.
+- The suppression threshold is fixed at 3.
+- The dataset is loaded into memory at application startup.
+- Only aggregation queries are supported.
+- Filter values may be provided as either a single value or a list.
+- Invalid query fields return HTTP 400 responses.
+- Validation exceptions are converted into a consistent JSON error response format using the API layer.
+- Audit logs are written to a local file (`audit.log`).
 
-Please document any assumptions clearly in the README.
+---
+
+## Notes
+
+- Audit records are written to `audit.log`.
+- The solution includes unit and API tests.
+- Docker support is provided via the included Dockerfile.
+- Swagger documentation is available at `/docs`.
+- The solution was verified using both Swagger UI and Docker.
+
+---
+
+## Future Improvements
+
+Potential production enhancements:
+
+- Environment-based configuration
+- Structured JSON application logging
+- Persistent audit log storage
+- Authentication and authorisation
+- CI/CD pipeline integration
+- Kubernetes deployment
+- Enhanced monitoring and observability

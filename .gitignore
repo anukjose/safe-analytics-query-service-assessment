@@ -1,5 +1,26 @@
+# Virtual environment
+venv/
+
+# Python cache
 __pycache__/
 *.pyc
-venv/
-.env
-*.log
+*.pyo
+
+# Pytest
+.pytest_cache/
+
+# Coverage
+.coverage
+htmlcov/
+
+# Audit logs
+audit.log
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
+
+# Git metadata
+*.swp
