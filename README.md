@@ -50,9 +50,14 @@ Responsible for:
 ```http
 POST /query
 ```
-Aggregate records by a specified field.
 
-### Request
+Execute an analytics query by grouping employee records on a specified field and optionally applying filters. Results are returned as aggregated counts with small-number suppression applied where required.
+
+---
+
+### Use Case 1: Aggregate by Department
+
+Request:
 
 ```json
 {
@@ -60,7 +65,28 @@ Aggregate records by a specified field.
 }
 ```
 
-### Request With Filter
+Response:
+
+```json
+{
+  "Engineering": 9,
+  "Executive": "suppressed",
+  "Finance": 3,
+  "HR": 3,
+  "Legal": 3,
+  "Marketing": 3,
+  "Research": 4,
+  "Support": 3
+}
+```
+
+Counts below the suppression threshold are replaced with `"suppressed"`.
+
+---
+
+### Use Case 2: Aggregate by Department with a Single Filter
+
+Request:
 
 ```json
 {
@@ -71,24 +97,75 @@ Aggregate records by a specified field.
 }
 ```
 
-### Successful Response
+Response:
 
 ```json
 {
-  "Engineering": 9,
-  "Finance": 3,
-  "Research": 4,
-  "Executive": "suppressed"
+  "Engineering": 6,
+  "Executive": "suppressed",
+  "Finance": "suppressed",
+  "HR": "suppressed",
+  "Legal": "suppressed",
+  "Marketing": "suppressed",
+  "Research": "suppressed"
 }
 ```
 
-### Validation Error
+The filter is applied before aggregation and suppression.
+
+---
+
+### Use Case 3: Aggregate by Department with Multiple Filter Values
+
+Request:
+
+```json
+{
+  "group_by": "department",
+  "filter": {
+    "location": ["London", "Manchester"]
+  }
+}
+```
+
+Response:
+
+```json
+{
+  "Engineering": 7,
+  "Executive": "suppressed",
+  "Finance": 3,
+  "HR": "suppressed",
+  "Legal": 3,
+  "Marketing": "suppressed",
+  "Research": 3,
+  "Support": "suppressed"
+}
+```
+
+The service supports multi-value filters using arrays.
+
+---
+
+### Validation Error Example
+
+Request:
+
+```json
+{
+  "group_by": "unknown_column"
+}
+```
+
+Response:
 
 ```json
 {
   "error": "Invalid group_by field: unknown_column"
 }
 ```
+
+Invalid query fields return an HTTP 400 response with a descriptive error message.
 
 ---
 
@@ -154,13 +231,6 @@ Run with coverage:
 pytest --cov=app
 ```
 
-Current results:
-
-```text
-9 passed
-96% coverage
-```
-
 ---
 
 ## Running with Docker
@@ -168,13 +238,13 @@ Current results:
 ### Build Image
 
 ```bash
-docker build -t safe-analytics-query-service .
+docker build -t safe-analytics-query-service-assessment .
 ```
 
 ### Run Container
 
 ```bash
-docker run -p 8000:8000 safe-analytics-query-service
+docker run -p 8000:8000 safe-analytics-query-service-assessment
 ```
 
 Swagger UI:
@@ -188,7 +258,7 @@ http://localhost:8000/docs
 ## Project Structure
 
 ```text
-safe-analytics-query-service/
+safe-analytics-query-service-assessment/
 │
 ├── app/
 │   ├── api.py
