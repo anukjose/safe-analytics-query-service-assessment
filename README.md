@@ -294,6 +294,8 @@ safe-analytics-query-service-assessment/
 - Invalid query fields return HTTP 400 responses.
 - Validation exceptions are converted into a consistent JSON error response format using the API layer.
 - Audit logs are written to a local file (`audit.log`).
+- Audit records are written to `audit.log`.
+- When running in Docker, the audit log is created inside the container filesystem unless a volume is mounted.
 
 ---
 
